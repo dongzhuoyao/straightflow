@@ -346,7 +346,9 @@ def get_hparams():
 def main(argv):
     config = FLAGS.config
     config.config_name = get_config_name()
-    config.hparams = config.dataset.name + "-" + get_hparams()
+    config.hparams = (
+        config.flow_name + "-" + config.dataset.name + "-" + get_hparams()
+    )
     config.workdir = FLAGS.workdir or os.path.join(
         "workdir", config.config_name, config.hparams
     )
