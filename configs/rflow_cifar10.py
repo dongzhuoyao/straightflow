@@ -16,11 +16,11 @@ def get_config():
 
     config.train = d(
         n_steps=500000,
-        batch_size=128,
+        batch_size=16,  # 128,
         mode="uncond",
         log_interval=10,
-        eval_interval=500,
-        save_interval=500,
+        eval_interval=100,  # 000,
+        save_interval=50000,
     )
 
     config.optimizer = d(
@@ -45,7 +45,7 @@ def get_config():
         num_classes=-1,
     )
 
-    config.flow_name = "fm"
+    config.flow_name = "rflow"
 
     config.dynamic = d(
         sigma_min=1e-4,

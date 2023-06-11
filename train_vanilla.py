@@ -21,7 +21,8 @@ import builtins
 import os
 import wandb
 import torch.distributed as dist
-from flows.flow_matching import CNF
+from flows.flow_matching import CNF as CNF_fm
+from flows.rectified_flow import CNF as CNF_rflow
 
 
 def train(config):
@@ -130,8 +131,13 @@ def train(config):
     )
 
     # set the score_model to train
-    score_model = CNF(net=nnet)
-    score_model_ema = CNF(net=nnet_ema)
+
+    if config.flow_name == "fm":
+        score_model = CNF_fm(net=nnet)
+    elif config.flow_name == "rflow":
+        score_model = CNF_rflow(net=nnet)
+    else:
+        raise NotImplementedError
 
     def train_step(_batch):
         _metrics = dict()
@@ -299,7 +305,7 @@ def train(config):
     )
 
 
-_config = "configs/fm_cifar10.py"
+_config = "configs/rflow_cifar10.py"
 FLAGS = flags.FLAGS
 config_flags.DEFINE_config_file(
     "config",

@@ -1,3 +1,12 @@
+# method
+
+## R-Flow
+
+loss https://github.com/gnobitab/RectifiedFlow/blob/9df93aa874f7d2c5097bf7c089698c071c71b5c8/ImageGeneration/losses.py#L88
+
+sample
+
+
 
 # Main Experiments
 ## Local-Prompt 
