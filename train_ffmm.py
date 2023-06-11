@@ -21,7 +21,7 @@ import builtins
 import os
 import wandb
 import torch.distributed as dist
-from flow_matching import CNF
+from flows.flow_matching import CNF
 
 
 def train(config):

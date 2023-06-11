@@ -1,5 +1,5 @@
 from configs.config_utils import update_config
-from flow_matching import CNF
+from flows.flow_matching import CNF
 import ml_collections
 import torch
 from torch import multiprocessing as mp

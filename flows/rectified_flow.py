@@ -8,6 +8,9 @@ from torch.distributions import Normal
 from torchdiffeq import odeint_adjoint as odeint
 from absl import logging
 
+_RTOL = 1e-5
+_ATOL = 1e-5
+
 
 class CNF(nn.Module):
     def __init__(
@@ -21,20 +24,18 @@ class CNF(nn.Module):
         self,
         t: Tensor,
         x: Tensor,
-        context: Tensor,
+        y: Tensor,
         **kwargs,
     ) -> Tensor:
         if t.numel() == 1:
             if self.is_dissection_mode(kwargs):
                 logging.info(f"debug mode, forward timesteps: {t.item()}")
             t = t.expand(x.size(0))
-        _pred, inters = self.net(x, t, context=context, **kwargs)
+        _pred, inters = self.net(x, t, y, **kwargs)
+
         return _pred
 
     def get_ode_kwargs(self, **kwargs):
-        _RTOL = 1e-5
-        _ATOL = 1e-5
-
         if self.is_dissection_mode(kwargs):
             _solver_kwargs = kwargs["solver_kwargs"]
             logging.info("euler sampling mode, only for testing/analysis")
@@ -83,7 +84,8 @@ class CNF(nn.Module):
             )
         return ode_kwargs
 
-    def training_losses(self, x, context, sigma_min, **kwargs):
+    # @torch.cuda.amp.autocast()
+    def training_losses(self, x, y, sigma_min, **kwargs):
         noise = torch.randn_like(x)
 
         t = torch.rand(len(x), device=x.device, dtype=x.dtype)
@@ -92,22 +94,23 @@ class CNF(nn.Module):
         u = x - (1 - sigma_min) * noise
 
         return (
-            (
-                self.forward(t, x_new, context=context, **kwargs) - u
-            )  # self.forward = vector_field
+            (self.forward(t, x_new, y=y, **kwargs) - u)  # self.forward = vector_field
             .square()
             .mean(dim=(1, 2, 3))
         )
 
-    def is_dissection_mode(self, kwargs):
-        return "dissect_name" in kwargs and kwargs["dissect_name"] is not None
-
-    def encode(self, x: Tensor, context: Tensor, **kwargs) -> Tensor:
+    def encode(self, x: Tensor, y: Tensor, **kwargs) -> Tensor:
         # if y is not None:
-        kwargs.update({"fm_direction": "encode"})
-        func = lambda t, x: self(t, x, context=context, **kwargs)
+        func = lambda t, x: self(t, x, y=y, **kwargs)
 
-        ode_kwargs = self.get_ode_kwargs(**kwargs)
+        _solver_kwargs = kwargs["solver_kwargs"]
+        ode_kwargs = dict(
+            method=_solver_kwargs["solver_fix"],
+            rtol=_RTOL,
+            atol=_ATOL,
+            adjoint_params=(),
+            options=dict(step_size=_solver_kwargs["solver_fix_step"]),
+        )
         logging.warning("current encoding to z, should not be used in training")
         if ode_kwargs["method"] != "dopri5":
             logging.info(f"encoding to z, debug mode, {ode_kwargs}")
@@ -121,14 +124,16 @@ class CNF(nn.Module):
             **ode_kwargs,
         )[-1]
 
+    def is_dissection_mode(self, kwargs):
+        return "dissect_name" in kwargs and kwargs["dissect_name"] is not None
+
     def decode(
         self,
         z: Tensor,
-        context: Tensor,
+        y: Tensor,
         **kwargs,
     ) -> Tensor:
-        kwargs.update({"fm_direction": "decode"})
-        func = lambda t, x: self(t, x, context=context, **kwargs)
+        func = lambda t, x: self(t, x, y=y, **kwargs)
 
         if kwargs["solver_kwargs"]["solver"] in ["fixed", "adaptive"]:
             ode_kwargs = self.get_ode_kwargs(**kwargs)
@@ -141,19 +146,19 @@ class CNF(nn.Module):
                 **ode_kwargs,
             )[-1]
         elif kwargs["solver_kwargs"]["solver"] == "fixadp":
-            return self.decode_fixadp(z, context, t_mid=kwargs["t_edit"], **kwargs)
+            return self.decode_fixadp(z, y, t_mid=kwargs["t_edit"], **kwargs)
         else:
             raise NotImplementedError(f"unknown solver {kwargs['solver_kwargs']}")
 
     def decode_fixadp(
         self,
         z: Tensor,
-        context: Tensor,
+        y: Tensor,
         t_mid,
         **kwargs,
     ) -> Tensor:
-        assert t_mid >= 0 and t_mid <= 1
-        func = lambda t, x: self(t, x, context=context, **kwargs)
+        assert t_mid >= 0 and t_mid <= 1, f"t_mid={t_mid}"
+        func = lambda t, x: self(t, x, y=y, **kwargs)
         ode_fixed_kwargs, ode_adaptive_kwargs = self.get_ode_kwargs(**kwargs)
         _intermediate = odeint(
             func,
