@@ -12,7 +12,7 @@ def get_config():
     config.seed = 1234
 
     config.pretrained_path = None
-    config.vis_num = 64
+    config.vis_num = 100
 
     config.train = d(
         n_steps=500000,
