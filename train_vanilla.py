@@ -48,7 +48,7 @@ def train(config):
     if accelerator.is_main_process:
         wandb.init(
             dir=os.path.abspath(config.workdir),
-            project=f"lfm_uvit",
+            project=f"straightflow",
             config=config.to_dict(),
             name=config.hparams,
             job_type="train",
@@ -63,7 +63,7 @@ def train(config):
         builtins.print = lambda *args: None
 
     dataset = get_dataset(**config.dataset)
-    assert os.path.exists(dataset.fid_stat)
+    assert os.path.exists(dataset.fid_stat), dataset.fid_stat
     train_dataset = dataset.get_split(
         split="train", labeled=config.train.mode == "cond"
     )
@@ -87,10 +87,17 @@ def train(config):
     lr_scheduler = train_state.lr_scheduler
 
     if config.pretrained_path:
-        logging.warning('pretrained_path is True, will load pretrained model from "pretrained_path"')
-        train_state.load_nnet_only(config.pretrained_path, has_label= True if 'imagenet' in config.dataset.name or "cifar" in config.dataset.name else False)
+        logging.warning(
+            'pretrained_path is True, will load pretrained model from "pretrained_path"'
+        )
+        train_state.load_nnet_only(
+            config.pretrained_path,
+            has_label=True
+            if "imagenet" in config.dataset.name or "cifar" in config.dataset.name
+            else False,
+        )
 
-    #train_state.resume(config.ckpt_root)
+    # train_state.resume(config.ckpt_root)
 
     def get_data_generator():
         while True:
@@ -142,8 +149,7 @@ def train(config):
         _metrics["loss"] = accelerator.gather(loss.detach()).mean()
         accelerator.backward(loss.mean())
         if "grad_clip" in config and config.grad_clip > 0:
-            accelerator.clip_grad_norm_(
-                nnet.parameters(), max_norm=config.grad_clip)
+            accelerator.clip_grad_norm_(nnet.parameters(), max_norm=config.grad_clip)
         optimizer.step()
         lr_scheduler.step()
         train_state.ema_update(config.get("ema_rate", 0.9999))
@@ -157,13 +163,11 @@ def train(config):
         )
 
         def sample_fn(_n_samples):
-            _x_init = torch.randn(
-                _n_samples, *dataset.data_shape, device=device)
+            _x_init = torch.randn(_n_samples, *dataset.data_shape, device=device)
             if config.train.mode == "uncond":
                 kwargs = dict(y=None)
             elif config.train.mode == "cond":
-                kwargs = dict(y=dataset.sample_label(
-                    _n_samples, device=device))
+                kwargs = dict(y=dataset.sample_label(_n_samples, device=device))
             else:
                 raise NotImplementedError
 
@@ -191,8 +195,7 @@ def train(config):
                 _fid = calculate_fid_given_paths((dataset.fid_stat, path))
                 logging.info(f"step={train_state.step} fid{n_samples}={_fid}")
                 with open(os.path.join(config.workdir, "eval.log"), "a") as f:
-                    print(
-                        f"step={train_state.step} fid{n_samples}={_fid}", file=f)
+                    print(f"step={train_state.step} fid{n_samples}={_fid}", file=f)
                 wandb.log({f"fid{n_samples}": _fid}, step=train_state.step)
             _fid = torch.tensor(_fid, device=device)
             _fid = accelerator.reduce(_fid, reduction="sum")
@@ -223,10 +226,10 @@ def train(config):
             and train_state.step % config.train.eval_interval == 0
         ):
             logging.info("Save a grid of images...")
-            #x_init = torch.randn(100, *dataset.data_shape, device=device)
+            # x_init = torch.randn(100, *dataset.data_shape, device=device)
 
             if config.train.mode == "uncond":
-                samples   = score_model.decode(
+                samples = score_model.decode(
                     fixed_noise[:100],
                     y=None,
                 )
@@ -249,17 +252,18 @@ def train(config):
             train_batch_4vis = make_grid(dataset.unpreprocess(batch[:100]), 10)
             samples = make_grid(dataset.unpreprocess(samples[:100]), 10)
             save_image(
-                samples, os.path.join(
-                    config.sample_dir, f"{train_state.step}.png")
+                samples, os.path.join(config.sample_dir, f"{train_state.step}.png")
             )
             wandb.log(
-                {"samples": wandb.Image(samples), 
-                "data": wandb.Image(train_batch_4vis),
-                "sample_max": samples_raw.max(), 
-                "sample_min": samples_raw.min(), 
-                "data_min": batch.min(),
-                "data_max": batch.max(),
-                "global_step": train_state.step},
+                {
+                    "samples": wandb.Image(samples),
+                    "data": wandb.Image(train_batch_4vis),
+                    "sample_max": samples_raw.max(),
+                    "sample_min": samples_raw.min(),
+                    "data_min": batch.min(),
+                    "data_max": batch.max(),
+                    "global_step": train_state.step,
+                },
                 commit=False,
             )
             torch.cuda.empty_cache()
@@ -295,12 +299,16 @@ def train(config):
     )
 
 
+_config = "configs/fm_cifar10.py"
 FLAGS = flags.FLAGS
 config_flags.DEFINE_config_file(
-    "config", None, "Training configuration.", lock_config=False,
+    "config",
+    _config,
+    "Training configuration.",
+    lock_config=False,
 )
 flags.mark_flags_as_required(["config"])
-flags.DEFINE_string("workdir", None, "Work unit directory.")
+flags.DEFINE_string("workdir", "./workdir", "Work unit directory.")
 
 
 def get_config_name():

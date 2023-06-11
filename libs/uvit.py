@@ -8,7 +8,7 @@ from absl import logging
 import uuid, os
 import numpy as np
 import time
-from .dissection import dissect_helper_uvit
+
 
 if hasattr(torch.nn.functional, "scaled_dot_product_attention"):
     ATTENTION_MODE = "flash"
@@ -150,7 +150,6 @@ class Block(nn.Module):
         else:
             result_x = self._forward(x, skip)
 
-        
         _counter["block_id"] += 1
         return result_x
 
@@ -310,9 +309,6 @@ class UViT(nn.Module):
         y=None,
         **kwargs,
     ):
-        if kwargs["edit_loc"] == "head":
-            x = dissect_helper_uvit(x=x, timesteps=timesteps, block_id=0, **kwargs)
-
         x = self.patch_embed(x)
         B, L, D = x.shape
         _counter = dict(block_id=0)
@@ -333,9 +329,6 @@ class UViT(nn.Module):
 
         x = self.mid_block(x, _counter=_counter, timesteps=timesteps, **kwargs)
 
-        if kwargs["edit_loc"] == "mid":
-            x = dissect_helper_uvit(x=x, timesteps=timesteps, block_id=0, **kwargs)
-
         for blk in self.out_blocks:
             x = blk(x, skips.pop(), _counter=_counter, timesteps=timesteps, **kwargs)
 
@@ -346,6 +339,4 @@ class UViT(nn.Module):
         x = unpatchify(x, self.in_chans)
         x = self.final_layer(x)
 
-        if kwargs["edit_loc"] == "tail":
-            x = dissect_helper_uvit(x=x, timesteps=timesteps, block_id=0, **kwargs)
         return x, None

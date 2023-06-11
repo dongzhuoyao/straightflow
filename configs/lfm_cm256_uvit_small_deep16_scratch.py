@@ -73,31 +73,4 @@ def get_config():
         path="samples/" + config.dataset.name,
     )
 
-    _scales = [-500, -400, -300, -200, 100, 50, 10, 0, 10, 50, 100, 200, 300, 400, 500]
-    # _scales = [0, 300]
-    _scales = [1 * s for s in _scales]
-
-    config.dissection = d(
-        dissect_task="hspace",
-        dissect_name=None,  # "write_pca",
-        n_samples=100,
-        mini_batch_size=100,
-        
-        vis_path=os.path.join("dissections_vis", config.dataset.name),  # required field
-        read_path_root="mid_feat/v2_euler100",  # v1 save more layers of the uvit
-        write_scales=_scales,
-        ith_component=1,  # 1, #ith component in the pca space
-        pca_n=50,  # number of components in the pca space
-        fixed_z_path=None,  # None or the root path for npy of the fixed z, used for real image editing purpose.
-        t_edit=1.0,
-        edit_loc=None,
-        solver_kwargs=d(
-            solver="fixed",  # fixed, adaptive, fixadp
-            solver_fix="euler",  # Fixed solvers (euler, midpoint, rk4)
-            solver_fix_step=0.01,
-            solver_adaptive="dopri5",  # dopri5, rk4
-            solver_adaptive_prec=0.01,
-        ),
-    )
-
     return config
