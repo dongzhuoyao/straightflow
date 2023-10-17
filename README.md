@@ -37,7 +37,7 @@ conda install -c "nvidia/label/cuda-11.8.0" cuda-toolkit
 conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
 pip install pytorch-lightning torchdiffeq  matplotlib h5py timm diffusers accelerate loguru blobfile ml_collections
 pip install hydra-core wandb einops scikit-learn --upgrade
-pip install einops sklearn
+pip install einops sklearn ml_collections
 pip install transformers==4.23.1 pycocotools # for text-to-image task
 
 ```
