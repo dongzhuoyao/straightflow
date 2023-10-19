@@ -4,3 +4,6 @@ __pycache__
 
 assets/*
 workdir/*
+wandb/
+trajectory.png
+models/8gaussian-moons/cfm_v1.pt
