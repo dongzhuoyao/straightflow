@@ -1,3 +1,4 @@
+import copy
 from typing import Optional
 from einops import rearrange
 import torch
@@ -13,13 +14,15 @@ _RTOL = 1e-5
 _ATOL = 1e-5
 
 
-class CNF(nn.Module):
-    def __init__(
-        self,
-        net,
-    ):
+class Flow_Matching(nn.Module):
+    def __init__(self, net, is_rectifiedflow=False):
         super().__init__()
         self.net = net
+        self.is_rectifiedflow = is_rectifiedflow
+        if self.is_rectifiedflow:
+            self.frozen_net = None
+            self.rectify_epochs = [i for i in range(400)]
+            print("is_rectified Flow")
 
     def forward(
         self,
@@ -36,7 +39,10 @@ class CNF(nn.Module):
 
     # @torch.cuda.amp.autocast()
     def training_losses(self, x, y, sigma_min, **kwargs):
-        noise = torch.randn_like(x)
+        if self.is_rectifiedflow:
+            noise = self.encode(x=x, y=y)
+        else:
+            noise = torch.randn_like(x)
 
         t = torch.rand(len(x), device=x.device, dtype=x.dtype)
         t_ = t[:, None, None, None]  # [B, 1, 1, 1]
@@ -48,6 +54,16 @@ class CNF(nn.Module):
             .square()
             .mean(dim=(1, 2, 3))
         )
+
+    def copy_net(
+        self,
+    ):
+        if (
+            self.is_rectifiedflow
+            and self.rectify_epochs is not None
+            and self.current_epoch in self.rectify_epochs
+        ):
+            self.frozen_net = copy.deepcopy(self.net)
 
     def encode(self, x: Tensor, y: Tensor, **kwargs) -> Tensor:
         # if y is not None:

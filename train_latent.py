@@ -17,7 +17,7 @@ import os
 import wandb
 import libs.autoencoder
 import torch.distributed as dist
-from flows.flow_matching import CNF
+from flows.flow_matching import Flow_Matching
 
 
 def train(config):
@@ -147,8 +147,8 @@ def train(config):
     )
 
     # set the score_model to train
-    score_model = CNF(net=nnet)
-    score_model_ema = CNF(net=nnet_ema)
+    score_model = Flow_Matching(net=nnet)
+    score_model_ema = Flow_Matching(net=nnet_ema)
 
     # @torch.cuda.amp.autocast()
     def train_step(_batch):

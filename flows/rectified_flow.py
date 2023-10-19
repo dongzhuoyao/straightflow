@@ -14,7 +14,7 @@ _RTOL = 1e-5
 _ATOL = 1e-5
 
 
-class CNF(nn.Module):
+class Rectified_Flow(nn.Module):
     def __init__(
         self,
         net,

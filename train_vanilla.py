@@ -20,9 +20,8 @@ from absl import logging
 import builtins
 import os
 import wandb
-import torch.distributed as dist
-from flows.flow_matching import CNF as CNF_fm
-from flows.rectified_flow import CNF as CNF_rflow
+from flows.flow_matching import Flow_Matching as CNF_fm
+from flows.rectified_flow import Rectified_Flow as CNF_rflow
 
 
 def train(config):
@@ -346,9 +345,7 @@ def get_hparams():
 def main(argv):
     config = FLAGS.config
     config.config_name = get_config_name()
-    config.hparams = (
-        config.flow_name + "-" + config.dataset.name + "-" + get_hparams()
-    )
+    config.hparams = config.flow_name + "-" + config.dataset.name + "-" + get_hparams()
     config.workdir = FLAGS.workdir or os.path.join(
         "workdir", config.config_name, config.hparams
     )
