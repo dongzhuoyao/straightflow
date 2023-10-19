@@ -1,4 +1,5 @@
 from typing import Optional
+from einops import rearrange
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -92,3 +93,39 @@ class CNF(nn.Module):
             # phi=self.parameters(),
             **ode_kwargs,
         )[-1]
+
+    @torch.no_grad()
+    def sample_euler_raw(
+        self, z, step_num, return_x_est=False, return_x_est_num=None, **kwargs
+    ):
+        dt = 1.0 / step_num
+        traj = []  # to store the trajectory
+
+        z = z.detach().clone()
+        bs = len(z)
+
+        est = []
+
+        if return_x_est:
+            est_ids = [
+                int(i * step_num / return_x_est_num) for i in range(return_x_est_num)
+            ]
+
+        traj.append(z.detach().clone())
+        for i in range(0, step_num, 1):
+            t = torch.ones(bs, device=z.device) * i / step_num
+            pred = self.forward(z, t, **kwargs)
+
+            _est_now = z + (1 - i * 1.0 / step_num) * pred
+            est.append(_est_now.detach().clone())
+
+            z = z.detach().clone() + pred * dt
+            traj.append(z.detach().clone())
+
+        if return_x_est:
+            est = [est[i].unsqueeze(0) for i in est_ids]
+            est = torch.cat(est, dim=0)
+            est = rearrange(est, "t b w h c -> (t b) w h c")
+            return traj[-1], est
+        else:
+            return traj[-1]
