@@ -13,7 +13,7 @@ CUDA_VISIBLE_DEVICES=0  python train_vanilla.py
 ```
 
 ```
-CUDA_VISIBLE_DEVICES=4,5,6,7 python -m torch.distributed.launch --nproc_per_node=4 --master_port=9233 --use_env  train_vanilla.py  --config=configs/fm_cifar10.py 
+CUDA_VISIBLE_DEVICES=2,3,4,5 python -m torch.distributed.launch --nproc_per_node=4 --master_port=9233 --use_env  train_vanilla.py  --config=configs/fm_cifar10.py   --config.train.n_steps=100000000000 
 ```
 
 
